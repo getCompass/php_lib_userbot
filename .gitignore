@@ -1,0 +1,9 @@
+.idea
+.DS_Store
+._.DS_Store
+/vendor/*
+/www/*
+/src/Emoji.php
+test.php
+composer.lock
+log.log

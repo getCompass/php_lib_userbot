@@ -1,0 +1,16 @@
+{
+  "name": "get_compass/userbot",
+  "description": "Compass userbot api library.",
+  "type": "library",
+  "license": "BSD",
+  "autoload": {
+    "psr-4": {
+      "GetCompass\\Userbot\\": "src/"
+    }
+  },
+  "require": {
+    "ext-json": "*",
+    "ext-curl": "*",
+    "ext-mbstring": "*"
+  }
+}
