@@ -31,6 +31,8 @@ class Bot
     public const GET_GROUPS_URL_METHOD          = "group/getList";
     public const GET_COMMANDS_URL_METHOD        = "command/getList";
     public const UPDATE_COMMANDS_URL_METHOD     = "command/update";
+    public const GET_WEBHOOK_VERSION_METHOD     = "webhook/getVersion";
+    public const SET_WEBHOOK_VERSION_METHOD     = "webhook/setVersion";
 
     /** @var Credentials $credentials */
     protected $credentials;
@@ -53,15 +55,16 @@ class Bot
     /**
      * Serve webhook commands.
      *
-     * @param array                     $post
+     * @param array  $post
+     * @param string $postSignature
      *
      * @return mixed
      * @throws Exception\Webhook\BadRequestException
      * @throws Exception\Webhook\BadCommandException
      */
-    public function serveWebhook(array $post)
+    public function serveWebhook(array $post, string $postSignature): mixed
     {
-        $data = PayloadHandler::decode($this->credentials, $post);
+        $data = PayloadHandler::decode($this->credentials, $post, $postSignature);
 
         foreach ($this->commandHandlers as $handler) {
 
@@ -75,6 +78,18 @@ class Bot
         }
 
         throw new Exception\Webhook\BadCommandException("got unknown command {$data["text"]}");
+    }
+
+    /**
+     * Get signature from header.
+     *
+     * @param string $headerPostSignature
+     *
+     * @return string
+     */
+    public function getHeaderPostSignature(string $headerPostSignature): string
+    {
+        return str_replace("signature=", "", $headerPostSignature);
     }
 
     /**
@@ -152,7 +167,7 @@ class Bot
     /**
      * Return user info by id.
      *
-     * @param string $userId
+     * @param int $userId
      * @return User
      *
      * @throws Exception\Request\BadRequestException
@@ -161,9 +176,9 @@ class Bot
      *
      * @link https://github.com/getCompass/userbot#post-usergetlist
      */
-    public function getUser(string $userId): User
+    public function getUser(int $userId): User
     {
-        $this::assert($userId !== "", "passed empty user id");
+        $this::assert($userId > 0, "passed empty user id");
         $page = 0;
 
         do {
@@ -184,7 +199,7 @@ class Bot
     /**
      * Send a text message to the private conversation.
      *
-     * @param string $userId
+     * @param int $userId
      * @param string $text
      *
      * @return string sent message_id
@@ -194,9 +209,9 @@ class Bot
      *
      * @link https://github.com/getCompass/userbot#post-usersend
      */
-    public function sendPrivateMessage(string $userId, string $text): string
+    public function sendPrivateMessage(int $userId, string $text): string
     {
-        $this::assert($userId !== "", "passed empty user id");
+        $this::assert($userId > 0, "passed empty user id");
         $this::assert($text !== "", "passed empty message");
 
         $response = $this->callDefault(static::SEND_PRIVATE_MESSAGE_METHOD, [
@@ -412,7 +427,7 @@ class Bot
 
         // get upload url
         $response = $this->makeRequest()
-            ->withAddress(UrlProvider::apiv1(static::GET_FILE_UPLOAD_URL_METHOD))
+            ->withAddress(UrlProvider::apiv2(static::GET_FILE_UPLOAD_URL_METHOD))
             ->send()
             ->waitResponse();
 
@@ -470,6 +485,8 @@ class Bot
     /**
      * Returns specified command from webhook.
      *
+     * @param string $command
+     *
      * @throws Exception\Request\BadRequestException
      * @throws Exception\Request\UnexpectedResponseException
      *
@@ -509,6 +526,41 @@ class Bot
         ]);
     }
 
+	/**
+	 * Get webhook version.
+	 *
+	 * @throws Exception\Request\BadRequestException
+	 * @throws Exception\Request\UnexpectedResponseException
+	 *
+	 * @link https://github.com/getCompass/userbot#post-webhookgetversion
+	 */
+	public function getWebhookVersion(): int
+	{
+		$response = $this->callDefault(static::GET_WEBHOOK_VERSION_METHOD, []);
+		return $response["version"];
+	}
+
+	/**
+	 * Set version for webhook.
+	 *
+	 * @param int $newVersion
+	 *
+	 * @return void
+	 *
+	 * @throws Exception\Request\BadRequestException
+	 * @throws Exception\Request\UnexpectedResponseException
+	 *
+	 * @link https://github.com/getCompass/userbot#post-webhooksetversion
+	 */
+	public function setWebhookVersion(int $newVersion): void
+	{
+		$this::assert($newVersion > 0, "passed incorrect version");
+
+		$this->callDefault(static::SET_WEBHOOK_VERSION_METHOD, [
+			"version" => $newVersion
+		]);
+	}
+
     # region shared protected
 
     /**
@@ -536,11 +588,11 @@ class Bot
             $users = $this->getUsers(static::GET_USERS_MAX_LIMIT, static::GET_USERS_MAX_LIMIT * $page++);
             foreach ($users as $user) {
 
-                if (isset($searchFor["@{$user->getUserId()}"])) {
+                if (isset($searchFor["@User-{$user->getUserId()}"])) {
 
-                    $usersInfo["@{$user->getUserId()}"] = sprintf(
+                    $usersInfo["@User-{$user->getUserId()}"] = sprintf(
                         "[\"@\"|%s|\"%s\"]",
-                        str_replace("User-", "", $user->getUserId()),
+                        $user->getUserId(),
                         $user->getUserName()
                     );
                 }
@@ -564,7 +616,7 @@ class Bot
     protected function callDefault(string $method, array $payload): array
     {
         return $this->makeRequest()
-            ->withAddress(UrlProvider::apiv1($method))
+            ->withAddress(UrlProvider::apiv2($method))
             ->withMessage($payload)
             ->send()
             ->waitResponse();

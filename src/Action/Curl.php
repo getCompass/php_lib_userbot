@@ -20,6 +20,8 @@ class Curl
     protected $response_code = 0;
     /** @var string */
     protected $user_agent = "Robot";
+    /** @var array */
+    protected $headers;
     /** @var int */
     protected $timeout = 5;
     /** @var int */
@@ -64,6 +66,18 @@ class Curl
     }
 
     /**
+     * Set header for curl.
+     *
+     * @param string $key
+     * @param string $value
+     * @return void
+     */
+    public function setHeader(string $key, string $value): void
+    {
+        $this->headers[$key] = $value;
+    }
+
+    /**
      * Performs POST request to server.
      *
      * @param string $url
@@ -85,7 +99,28 @@ class Curl
         curl_setopt($this->curl, CURLOPT_POSTFIELDS, $params);
         curl_setopt($this->curl, CURLOPT_USERAGENT, $this->user_agent);
 
+        if (count($this->headers) > 0) {
+        	curl_setopt($this->curl, CURLOPT_HTTPHEADER, $this->formatHeaders($this->headers));
+        }
+
         return $this->exec($url);
+    }
+
+    /**
+     * Formatted headers.
+     *
+     * @param array $headers
+     *
+     * @return string[]
+     */
+    protected function formatHeaders(array $headers): array
+    {
+    	  $output = [];
+    	  foreach ($headers as $key => $value) {
+    	  	$output[] = $key . ": " . $value;
+    	  }
+
+    	  return $output;
     }
 
     /**

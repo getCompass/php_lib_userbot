@@ -9,7 +9,7 @@ class Command
 {
     /** @var string */
     protected $line;
-    /** @var string */
+    /** @var int */
     protected $senderUserId;
     /** @var string */
     protected $messageId;
@@ -23,11 +23,11 @@ class Command
      *
      * @param string $line
      * @param array  $arguments
-     * @param string $senderUserId
+     * @param int    $senderUserId
      * @param string $messageId
      * @param string $groupId
      */
-    public function __construct(string $line, array $arguments, string $senderUserId, string $messageId, string $groupId)
+    public function __construct(string $line, array $arguments, int $senderUserId, string $messageId, string $groupId)
     {
         $this->line         = $line;
         $this->senderUserId = $senderUserId;
@@ -61,9 +61,9 @@ class Command
     }
 
     /**
-     * @return string
+     * @return int
      */
-    public function getSenderUserId(): string
+    public function getSenderUserId(): int
     {
         return $this->senderUserId;
     }

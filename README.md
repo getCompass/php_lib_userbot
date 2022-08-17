@@ -15,8 +15,8 @@ $bot = new \GetCompass\Userbot\Bot("your-token-here", "you-signature-key-here");
 ### Отправка текстовых сообщений
 Отправка доступна как в личные диалоги, так и в групповые. Также возможно отправлять сообщения-комментарии к другим сообщениям.
 ```php
-// отправка личного сообщения пользователю 160XXX
-$bot->sendPrivateMessage("User-160XXX", "Привет, пользователь @User-160XXX :blush:");
+// отправка личного сообщения пользователю 160001
+$bot->sendPrivateMessage(160001, "Привет, пользователь @User-160001 :blush:");
 
 // отправка сообщения в группу
 $bot->sendGroupMessage("icVBoMAA36njACiWxy...", "Привет, участники группы :blush:");
@@ -28,7 +28,7 @@ $bot->sendMessageToMessageThread("ifghWeffbdDDsdxy...", "Приветствую 
 Через userbot-api доступна отправка файлов в чаты и комментарии. За один раз разрешается загрузить только один файл, каждый загруженный файл является отдельным сообщением.
 ```php
 // отправка файла в личный диалог
-$bot->sendFileToPrivate("User-160XXX", "/my/awesome/file.png");
+$bot->sendFileToPrivate(160001, "/my/awesome/file.png");
 
 // отправка файла в группу
 $bot->sendFileToGroup("icVBoMAA36njACiWxy...", "/my/awesome/file.png");
@@ -81,6 +81,14 @@ $bot = new \GetCompass\Userbot\Bot(
     )
 );
 
-// передаем post-данные, пришедшие с сервера, в обработчик
-$bot->serveWebhook($_POST);
+// получаем данные, переданные боту
+$postData = file_get_contents("php://input");
+$postData = json_decode($postData, true);
+
+// достаём подпись запроса для валидации данных
+$postSignature = $_SERVER["HTTP_SIGNATURE"] ?? "";
+$postSignature = $bot->getHeaderPostSignature($postSignature);
+
+// передаем данные, пришедшие с сервера, в обработчик
+$bot->serveWebhook($postData, $postSignature);
 ```

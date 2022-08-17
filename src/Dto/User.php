@@ -7,7 +7,7 @@ namespace GetCompass\Userbot\Dto;
  */
 class User
 {
-    /** @var string */
+    /** @var int */
     protected $userId;
     /** @var string */
     protected $userName;
@@ -17,11 +17,11 @@ class User
     /**
      * User constructor.
      *
-     * @param string $userId
+     * @param int    $userId
      * @param string $userName
      * @param string $avatarFileUrl
      */
-    public function __construct(string $userId, string $userName, string $avatarFileUrl)
+    public function __construct(int $userId, string $userName, string $avatarFileUrl)
     {
         $this->userId        = $userId;
         $this->userName      = $userName;
@@ -31,9 +31,9 @@ class User
     /**
      * Return user id. Id is a unique field.
      *
-     * @return string
+     * @return int
      */
-    public function getUserId(): string
+    public function getUserId(): int
     {
         return $this->userId;
     }

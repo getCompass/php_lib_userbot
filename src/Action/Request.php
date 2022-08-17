@@ -204,12 +204,38 @@ class Request
             $rawResponse = $this->client->post($this->url, $this->rawPayload);
         } else {
 
-            $payload     = $this->rawPayload;
-            $rawResponse = $this->client->post($this->url, PayloadHandler::encode($this->credentials, $payload));
+            $this->setAuthorizationHeader();
+            $this->setSignatureHeader();
+
+            $rawResponse = $this->client->post($this->url, PayloadHandler::encode($this->rawPayload));
         }
 
         $this->checkResponseHttpCode();
         return $this->parseCompassResponse($rawResponse);
+    }
+
+    /**
+     * Set token for request.
+     *
+     * @return void
+     */
+    protected function setAuthorizationHeader(): void
+    {
+    	  $authorization = "bearer=" . $this->credentials->getApiToken();
+    	  $this->client->setHeader("Authorization", $authorization);
+    }
+
+    /**
+     * Set signature for request.
+     *
+     * @return void
+     */
+    protected function setSignatureHeader(): void
+    {
+        $signature = PayloadHandler::getPayloadSign($this->rawPayload, $this->credentials->getApiToken(), $this->credentials->getSignatureKey());
+        $signature = "signature=" . $signature;
+
+        $this->client->setHeader("Signature", $signature);
     }
 
     /**
