@@ -4,16 +4,16 @@
 # Library for working with the Compass app bot API
 This library provides a set of tools for working with bots in the Compass messaging app. [More information about the bot API](https://github.com/getCompass/userbot).
 ## Creating a class instance for a bot
-To configure bot access, you need to get an authorization token and a signature key inside the app.
+To configure bot access, you need to get an authorization token inside the app.
 ```php
-// the previously received authorization token and signature key are indicated as your-signature-key-here and your-token-here
-$bot = new \GetCompass\Userbot\Bot("your-token-here", "you-signature-key-here");
+// the previously received authorization token are indicated as your-token-here
+$bot = new \GetCompass\Userbot\Bot("your-token-here");
 ```
 ## Using the main userbot API methods
 The main methods include:
-- sending text messages;
-- sending files;
-- adding a reaction to a message.
+- sending text messages
+- sending files
+- adding a reaction to a message
 
 ### Sending text messages
 Sending messages is available for both private and group chats. It is also possible to add comments to other messages.
@@ -60,7 +60,7 @@ Any line starting with the `/` character can be used as a command. A command can
 ```php
 // announcing the expected commands
 // commands must be pre-announced outside the main logic of webhook processing
-$bot = new \GetCompass\Userbot\Bot("your-token-here", "your-signature-key-here");
+$bot = new \GetCompass\Userbot\Bot("your-token-here");
 $bot->addCommands("/wheel of fortune [lucky_guys] [prize]");
 ```
 ### Processing webhook requests
@@ -70,7 +70,6 @@ To process requests, you need to create a bot and specify a set of command handl
 // initialize the bot instance specifying the handler for the command "/wheel of fortune [lucky_guys] [prize]"
 $bot = new \GetCompass\Userbot\Bot(
       "your-token-here",
-      "your-signature-key-here",
       new \GetCompass\Userbot\Command\SimpleCommand(
             "/wheel of fortune [lucky_guys] [prize]",
             function (\GetCompass\Userbot\Bot $bot, \GetCompass\Userbot\Dto\Command $command) {
@@ -86,10 +85,6 @@ $bot = new \GetCompass\Userbot\Bot(
 $postData = file_get_contents("php://input");
 $postData = json_decode($postData, true);
 
-// getting the signature of the request for data validation
-$postSignature = $_SERVER["HTTP_SIGNATURE"] ?? "";
-$postSignature = $bot->getHeaderPostSignature($postSignature);
-
 // transmitting the data that came from the server to the handler
-$bot->serveWebhook($postData, $postSignature);
+$bot->serveWebhook($postData);
 ```

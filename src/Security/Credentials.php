@@ -10,19 +10,15 @@ class Credentials
 {
     /** @var string */
     protected $apiToken;
-    /** @var string */
-    protected $signatureKey;
 
     /**
      * Constructor
      *
      * @param string $apiToken
-     * @param string $signatureKey
      */
-    public function __construct(string $apiToken, string $signatureKey)
+    public function __construct(string $apiToken)
     {
-        $this->apiToken     = $apiToken;
-        $this->signatureKey = $signatureKey;
+        $this->apiToken = $apiToken;
     }
 
     /**
@@ -32,14 +28,5 @@ class Credentials
     public function getApiToken(): string
     {
         return $this->apiToken;
-    }
-
-    /**
-     * Returns a compass-api signature key.
-     * @return string
-     */
-    public function getSignatureKey(): string
-    {
-        return $this->signatureKey;
     }
 }

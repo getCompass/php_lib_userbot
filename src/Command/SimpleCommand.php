@@ -40,8 +40,8 @@ class SimpleCommand implements InterfaceCommandHandler
      */
     public function tryParseCommand(string $command)
     {
-        [$commandPrefix] = explode(" ", $command, 2);
-        [$handlerPrefix] = explode(" ", $this->rawCommand, 2);
+        [$commandPrefix] = explode("[", $command, 2);
+        [$handlerPrefix] = explode("[", $this->rawCommand, 2);
 
         // do a quick prefix check to avoid heavy regexp parsing
         if ($commandPrefix !== $handlerPrefix) {

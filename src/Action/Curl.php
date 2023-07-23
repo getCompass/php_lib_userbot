@@ -21,7 +21,7 @@ class Curl
     /** @var string */
     protected $user_agent = "Robot";
     /** @var array */
-    protected $headers;
+    protected $headers = [];
     /** @var int */
     protected $timeout = 5;
     /** @var int */

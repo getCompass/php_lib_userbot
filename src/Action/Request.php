@@ -24,8 +24,6 @@ class Request
     protected $url = "";
     /** @var array */
     protected $rawPayload = [];
-    /** @var string */
-    protected $requestId = "";
     /** @var array */
     protected $response;
     /** @var int request signing mode */
@@ -107,12 +105,12 @@ class Request
      * Doesn't return server response.
      * To get response waitResponse should be called.
      *
-     * @return $this
+     * @return array
      *
      * @throws BadRequestException
      * @throws UnexpectedResponseException
      */
-    public function send(): self
+    public function send(): array
     {
         if ($this->url === "") {
             throw new \RuntimeException("url can not be empty");
@@ -120,70 +118,14 @@ class Request
 
         try {
 
-            $response = $this->exec();
+            $this->response = $this->exec();
         } catch (RequestInProgressException $e) {
 
             // UnexpectedResponseException is unexpected here, need change it
             throw new UnexpectedResponseException($e->getMessage(), $e->getCode());
         }
 
-        if (isset($response["request_id"])) {
-
-            // set request id if server has returned it
-            $this->requestId = $response["request_id"];
-        } else {
-
-            // if there is no request id, just set the response
-            $this->response = $response;
-        }
-
-        return $this;
-    }
-
-    /**
-     * Waits till server completes the request.
-     * Fails if request time out.
-     *
-     * @param int $timeout
-     *
-     * @return array
-     *
-     * @throws BadRequestException
-     * @throws UnexpectedResponseException
-     */
-    public function waitResponse(int $timeout = 10): array
-    {
-        if (!is_null($this->response)) {
-            return $this->response;
-        }
-
-        if ($this->requestId === "") {
-            throw new \RuntimeException("request has no request id to wait");
-        }
-
-        // set request deadline
-        $deadlineDate = time() + $timeout;
-
-        do {
-
-            try {
-
-                return (new static($this->client, $this->credentials))
-                    ->withSign()
-                    ->withAddress(UrlProvider::requestStatus())
-                    ->withMessage(["request_id" => $this->requestId])
-                    ->exec();
-            } catch (RequestInProgressException $e) {
-
-                // code 7 — request is not ready yet, need to wait a bit
-                // just do nothing and wait till next iteration
-            }
-
-            sleep(1);
-        } while (time() < $deadlineDate);
-
-        // timeout reached, request wasn't processed by server in expected time
-        throw new UnexpectedResponseException("request waiting timeout");
+        return $this->response;
     }
 
     # region shared protected
@@ -205,7 +147,6 @@ class Request
         } else {
 
             $this->setAuthorizationHeader();
-            $this->setSignatureHeader();
 
             $rawResponse = $this->client->post($this->url, PayloadHandler::encode($this->rawPayload));
         }
@@ -223,19 +164,6 @@ class Request
     {
     	  $authorization = "bearer=" . $this->credentials->getApiToken();
     	  $this->client->setHeader("Authorization", $authorization);
-    }
-
-    /**
-     * Set signature for request.
-     *
-     * @return void
-     */
-    protected function setSignatureHeader(): void
-    {
-        $signature = PayloadHandler::getPayloadSign($this->rawPayload, $this->credentials->getApiToken(), $this->credentials->getSignatureKey());
-        $signature = "signature=" . $signature;
-
-        $this->client->setHeader("Signature", $signature);
     }
 
     /**

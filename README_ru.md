@@ -7,8 +7,8 @@ Compass. [Больше информации об API ботов](https://github.
 ## Создание экземпляра класса для бота
 Для настройки доступов бота необходимо получить токен авторизации и ключ подписи внутри приложения.
 ```php
-// в качестве your-signature-key-here и your-token-here указываюся ранее полученные токен авторизации и ключ подписи
-$bot = new \GetCompass\Userbot\Bot("your-token-here", "you-signature-key-here");
+// в качестве your-token-here указываюся ранее полученные токен авторизации
+$bot = new \GetCompass\Userbot\Bot("your-token-here");
 ```
 ## Использование основных методов userbot-api
 К основным методам относятся:
@@ -68,7 +68,7 @@ $bot->removeReactionFromMessage("ifghWeffbdDDsdxy...", ":blush:");
 ```php
 // объявляем ожидаемые команды
 // команды нужно предварительно объявить вне основной логики обработки webhook
-$bot = new \GetCompass\Userbot\Bot("your-token-here", "your-signature-key-here");
+$bot = new \GetCompass\Userbot\Bot("your-token-here");
 $bot->addCommands("/колесо фортуны [lucky_guys] [prize]");
 ```
 ### Обработка webhook-запросов
@@ -78,7 +78,6 @@ $bot->addCommands("/колесо фортуны [lucky_guys] [prize]");
 // инициализируем экземпляр бота с указанием обработчика для команды "/колесо фортуны [lucky_guys] [prize]"
 $bot = new \GetCompass\Userbot\Bot(
     "your-token-here", 
-    "your-signature-key-here",
     new \GetCompass\Userbot\Command\SimpleCommand(
         "/колесо фортуны [lucky_guys] [prize]",
         function (\GetCompass\Userbot\Bot $bot, \GetCompass\Userbot\Dto\Command $command) {
@@ -94,10 +93,6 @@ $bot = new \GetCompass\Userbot\Bot(
 $postData = file_get_contents("php://input");
 $postData = json_decode($postData, true);
 
-// достаём подпись запроса для валидации данных
-$postSignature = $_SERVER["HTTP_SIGNATURE"] ?? "";
-$postSignature = $bot->getHeaderPostSignature($postSignature);
-
 // передаем данные, пришедшие с сервера, в обработчик
-$bot->serveWebhook($postData, $postSignature);
+$bot->serveWebhook($postData);
 ```

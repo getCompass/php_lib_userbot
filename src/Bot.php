@@ -6,11 +6,11 @@ use GetCompass\Userbot\Action\Curl;
 use GetCompass\Userbot\Action\Request;
 use GetCompass\Userbot\Action\UrlProvider;
 use GetCompass\Userbot\Command\InterfaceCommandHandler;
+use GetCompass\Userbot\Dto\Answer;
 use GetCompass\Userbot\Dto\Command;
 use GetCompass\Userbot\Dto\Group;
 use GetCompass\Userbot\Dto\User;
 use GetCompass\Userbot\Security\Credentials;
-use GetCompass\Userbot\Security\PayloadHandler;
 
 /**
  * Compass userbot helper.
@@ -34,21 +34,26 @@ class Bot
     public const GET_WEBHOOK_VERSION_METHOD     = "webhook/getVersion";
     public const SET_WEBHOOK_VERSION_METHOD     = "webhook/setVersion";
 
+    public const SEND_CHAT_MESSAGE_ACTION   = "message_send";
+    public const SEND_THREAD_MESSAGE_ACTION = "thread_send";
+    public const ADD_REACTION_ACTION        = "message_addreaction";
+
     /** @var Credentials $credentials */
     protected $credentials;
     /** @var InterfaceCommandHandler[] */
     protected $commandHandlers = [];
+    /** @var Answer|false $answer */
+    protected $answer = false;
 
     /**
      * Bot constructor.
      *
      * @param string                  $apiToken
-     * @param string                  $signatureKey
      * @param InterfaceCommandHandler ...$commandHandlers
      */
-    public function __construct(string $apiToken, string $signatureKey, InterfaceCommandHandler...$commandHandlers)
+    public function __construct(string $apiToken, InterfaceCommandHandler...$commandHandlers)
     {
-        $this->credentials     = new Credentials($apiToken, $signatureKey);
+        $this->credentials     = new Credentials($apiToken);
         $this->commandHandlers = $commandHandlers;
     }
 
@@ -56,40 +61,60 @@ class Bot
      * Serve webhook commands.
      *
      * @param array  $post
-     * @param string $postSignature
      *
      * @return mixed
-     * @throws Exception\Webhook\BadRequestException
      * @throws Exception\Webhook\BadCommandException
      */
-    public function serveWebhook(array $post, string $postSignature): mixed
+    public function serveWebhook(array $post): mixed
     {
-        $data = PayloadHandler::decode($this->credentials, $post, $postSignature);
-
         foreach ($this->commandHandlers as $handler) {
 
-            $args = $handler->tryParseCommand($data["text"]);
+            $args = $handler->tryParseCommand($post["text"]);
             if ($args === false) {
                 continue;
             }
 
-            $command = new Command($data["text"], $args, $data["user_id"], $data["message_id"], $data["group_id"]);
+            $command = new Command($post["text"], $args, $post["user_id"], $post["message_id"], $post["group_id"]);
             return $handler->run($this, $command);
         }
 
-        throw new Exception\Webhook\BadCommandException("got unknown command {$data["text"]}");
+        throw new Exception\Webhook\BadCommandException("got unknown command {$post["text"]}");
     }
 
     /**
-     * Get signature from header.
+     * Send synchronous response.
      *
-     * @param string $headerPostSignature
-     *
-     * @return string
+     * @return void
      */
-    public function getHeaderPostSignature(string $headerPostSignature): string
+    public function syncAnswer(): void
     {
-        return str_replace("signature=", "", $headerPostSignature);
+        if ($this->answer == false) {
+            return;
+        }
+
+        if (!headers_sent()) {
+
+            header("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
+            header("Cache-Control: no-store, no-cache, must-revalidate");
+            header("Pragma: no-cache");
+            header("Content-type: application/json;charset=UTF-8");
+	  }
+
+        http_response_code(200);
+
+        echo json_encode([
+            "answer" => (array) $this->answer,
+        ]);
+    }
+
+    /**
+     * Make answer for request.
+     *
+     * @return Request
+     */
+    public function makeAnswer(string $action, array $post): void
+    {
+        $this->answer = new Answer($action, $post);
     }
 
     /**
@@ -427,17 +452,15 @@ class Bot
 
         // get upload url
         $response = $this->makeRequest()
-            ->withAddress(UrlProvider::apiv2(static::GET_FILE_UPLOAD_URL_METHOD))
-            ->send()
-            ->waitResponse();
+            ->withAddress(UrlProvider::apiv3(static::GET_FILE_UPLOAD_URL_METHOD))
+            ->send();
 
         return $this->makeRequest()
             ->withSign(false)
             ->withAddress($response["node_url"])
             ->withMessage(["token" => $response["file_token"]])
             ->withFile($filePath)
-            ->send()
-            ->waitResponse();
+            ->send();
     }
 
     /**
@@ -526,40 +549,134 @@ class Bot
         ]);
     }
 
-	/**
-	 * Get webhook version.
-	 *
-	 * @throws Exception\Request\BadRequestException
-	 * @throws Exception\Request\UnexpectedResponseException
-	 *
-	 * @link https://github.com/getCompass/userbot#post-webhookgetversion
-	 */
-	public function getWebhookVersion(): int
-	{
-		$response = $this->callDefault(static::GET_WEBHOOK_VERSION_METHOD, []);
-		return $response["version"];
-	}
+    /**
+     * Get webhook version.
+     *
+     * @throws Exception\Request\BadRequestException
+     * @throws Exception\Request\UnexpectedResponseException
+     *
+     * @link https://github.com/getCompass/userbot#post-webhookgetversion
+     */
+    public function getWebhookVersion(): int
+    {
+        $response = $this->callDefault(static::GET_WEBHOOK_VERSION_METHOD, []);
+        return $response["version"];
+    }
 
-	/**
-	 * Set version for webhook.
-	 *
-	 * @param int $newVersion
-	 *
-	 * @return void
-	 *
-	 * @throws Exception\Request\BadRequestException
-	 * @throws Exception\Request\UnexpectedResponseException
-	 *
-	 * @link https://github.com/getCompass/userbot#post-webhooksetversion
-	 */
-	public function setWebhookVersion(int $newVersion): void
-	{
-		$this::assert($newVersion > 0, "passed incorrect version");
+    /**
+     * Set version for webhook.
+     *
+     * @param int $newVersion
+     *
+     * @return void
+     *
+     * @throws Exception\Request\BadRequestException
+     * @throws Exception\Request\UnexpectedResponseException
+     *
+     * @link https://github.com/getCompass/userbot#post-webhooksetversion
+     */
+    public function setWebhookVersion(int $newVersion): void
+    {
+        $this::assert($newVersion > 0, "passed incorrect version");
 
-		$this->callDefault(static::SET_WEBHOOK_VERSION_METHOD, [
-			"version" => $newVersion
-		]);
-	}
+        $this->callDefault(static::SET_WEBHOOK_VERSION_METHOD, [
+            "version" => $newVersion
+        ]);
+    }
+
+    /**
+     * Answer as sending a message to chat
+     *
+     * @param string $message
+     *
+     * @return void
+     *
+     * @throws Exception\Request\BadRequestException
+     */
+    public function answerToChatWithMessage(string $message): void
+    {
+        $this::assert($message !== "", "passed incorrect message text '$message'");
+
+        $this->answer = new Answer(static::SEND_CHAT_MESSAGE_ACTION, [
+        	"type" => "text",
+        	"text" => $message,
+        ]);
+    }
+
+    /**
+     * Answer as sending a file-message to chat
+     *
+     * @param string $fileId
+     *
+     * @return void
+     *
+     * @throws Exception\Request\BadRequestException
+     */
+    public function answerToChatWithFile(string $fileId): void
+    {
+        $this::assert($fileId !== "", "passed incorrect fileId '$fileId'");
+
+        $this->answer = new Answer(static::SEND_CHAT_MESSAGE_ACTION, [
+        	"type"    => "file",
+        	"file_id" => $fileId,
+        ]);
+    }
+
+    /**
+     * Answer as sending a message to thread
+     *
+     * @param string $message
+     *
+     * @return void
+     *
+     * @throws Exception\Request\BadRequestException
+     */
+    public function answerToThreadWithMessage(string $message): void
+    {
+        $this::assert($message !== "", "passed incorrect message text '$message'");
+
+        $this->answer = new Answer(static::SEND_THREAD_MESSAGE_ACTION, [
+        	"type" => "text",
+        	"text" => $message,
+        ]);
+    }
+
+    /**
+     * Answer as sending a file-message to thread
+     *
+     * @param string $fileId
+     *
+     * @return void
+     *
+     * @throws Exception\Request\BadRequestException
+     */
+    public function answerToThreadWithFile(string $fileId): void
+    {
+        $this::assert($fileId !== "", "passed incorrect fileId '$fileId'");
+
+        $this->answer = new Answer(static::SEND_THREAD_MESSAGE_ACTION, [
+        	"type"    => "file",
+        	"file_id" => $fileId,
+        ]);
+    }
+
+    /**
+     * Answer as set a reaction on message
+     *
+     * @param string $reaction
+     *
+     * @return void
+     *
+     * @throws Exception\Request\BadRequestException
+     */
+    public function answerToChatWithReaction(string $reaction): void
+    {
+        $this::assert($reaction !== "", "passed incorrect reaction '$reaction'");
+
+        $this->answer = new Answer(static::ADD_REACTION_ACTION, [
+        	"reaction" => $reaction,
+        ]);
+    }
 
     # region shared protected
 
@@ -616,10 +733,9 @@ class Bot
     protected function callDefault(string $method, array $payload): array
     {
         return $this->makeRequest()
-            ->withAddress(UrlProvider::apiv2($method))
+            ->withAddress(UrlProvider::apiv3($method))
             ->withMessage($payload)
-            ->send()
-            ->waitResponse();
+            ->send();
     }
 
     /**
