@@ -19,6 +19,6 @@ class PayloadHandler
      */
     public static function encode(array $payload): string
     {
-        return \json_encode($payload, JSON_FORCE_OBJECT);
+        return \json_encode($payload, JSON_FORCE_OBJECT | JSON_INVALID_UTF8_IGNORE);
     }
 }

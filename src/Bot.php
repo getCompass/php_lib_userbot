@@ -40,6 +40,8 @@ class Bot
 
     /** @var Credentials $credentials */
     protected $credentials;
+    /** @var string|false $endpoint */
+    protected $endpoint = false;
     /** @var InterfaceCommandHandler[] */
     protected $commandHandlers = [];
     /** @var Answer|false $answer */
@@ -110,7 +112,10 @@ class Bot
     /**
      * Make answer for request.
      *
-     * @return Request
+     * @param string $action
+     * @param array $post
+     *
+     * @return void
      */
     public function makeAnswer(string $action, array $post): void
     {
@@ -125,6 +130,18 @@ class Bot
     public function makeRequest(): Request
     {
         return new Request(new Curl(), $this->credentials);
+    }
+
+    /**
+     * Set custom endpoint for requests.
+     *
+     * @param string|false $endpoint
+     *
+     * @return void
+     */
+    public function setEndpoint(string|false $endpoint): void
+    {
+	    $this->endpoint = $endpoint;
     }
 
     /**
@@ -452,7 +469,7 @@ class Bot
 
         // get upload url
         $response = $this->makeRequest()
-            ->withAddress(UrlProvider::apiv3(static::GET_FILE_UPLOAD_URL_METHOD))
+            ->withAddress(UrlProvider::apiv3(static::GET_FILE_UPLOAD_URL_METHOD, $this->endpoint))
             ->send();
 
         return $this->makeRequest()
@@ -733,7 +750,7 @@ class Bot
     protected function callDefault(string $method, array $payload): array
     {
         return $this->makeRequest()
-            ->withAddress(UrlProvider::apiv3($method))
+            ->withAddress(UrlProvider::apiv3($method, $this->endpoint))
             ->withMessage($payload)
             ->send();
     }
