@@ -9,6 +9,17 @@ To configure bot access, you need to get an authorization token inside the app.
 // the previously received authorization token are indicated as your-token-here
 $bot = new \GetCompass\Userbot\Bot("your-token-here");
 ```
+
+### For the on-premise version
+After creating the instance, you should specify the address of your installed Compass server
+by adding a call to the setEndpoint() method:
+```php
+// replace your-domain.com with your actual domain
+$bot->setEndpoint("https://your-domain.com/userbot");
+```
+This step is required if you are using the on-premise version of the application.
+Without specifying setEndpoint(), the library will use saas API by default.
+
 ## Using the main userbot API methods
 The main methods include:
 - sending text messages
