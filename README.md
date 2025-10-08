@@ -11,7 +11,7 @@ $bot = new \GetCompass\Userbot\Bot("your-token-here");
 ```
 
 ### For the on-premise version
-After creating the instance, you must specify the address of your installed Compass server
+After creating the instance, you should specify the address of your installed Compass server
 by adding a call to the setEndpoint() method:
 ```php
 // replace your-domain.com with your actual domain
