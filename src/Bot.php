@@ -196,7 +196,7 @@ class Bot
         $this::assert($offset >= 0, "passed incorrect offset");
 
         $response = $this->callDefault(static::GET_USERS_URL_METHOD, [
-            "limit"  => $limit,
+            "count"  => $limit,
             "offset" => $offset,
         ]);
 
